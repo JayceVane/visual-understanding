@@ -93,19 +93,23 @@ export ANTHROPIC_API_KEY="your_key"
 
 ### Provider Configuration (Optional)
 
-To add custom providers or change defaults, create a config file:
+配置文件位置（按优先级自动查找，找到即用）：
 
-```bash
-# Option 1: env var
-export VISUAL_UNDERSTANDING_CONFIG=/path/to/config.yaml
+1. **`$VISUAL_UNDERSTANDING_CONFIG`** 环境变量指定的路径
+2. **`~/.config/visual-understanding/config.yaml`**（推荐，本机默认）
+3. 内置默认配置（无配置文件时：zhipu + openai + anthropic）
 
-# Option 2: default location
-mkdir -p ~/.config/visual-understanding
-cp config.example.yaml ~/.config/visual-understanding/config.yaml
-```
+本机已安装配置文件：`C:\Users\JayceVane\.config\visual-understanding\config.yaml`
+（含 zhipu + opencode-go 两个提供商，详见文件内注释）
 
-See `config.example.yaml` for the full format. Without a config file, built-in
-defaults (Zhipu + OpenAI + Anthropic) are used.
+API key 通过 `~/.bashrc` 注入环境变量：
+- `OPENCODE_API_KEY` 从 `~/.local/share/opencode/auth.json` 动态提取（无需手动维护）
+- `ZHIPU_API_KEY` 需用户手动填写（获取：https://bigmodel.cn/usercenter/proj-mgmt/apikeys）
+
+> ⚠️ 若命令报 "API key not set"：先检查 `echo $ZHIPU_API_KEY`（或对应变量），
+> 为空则编辑 `~/.bashrc` 填入 key 后新开终端，或当前终端手动 `export`。
+
+要修改提供商/模型，编辑配置文件后重启调用即可，无需重启任何服务。
 
 ## How to Use
 
