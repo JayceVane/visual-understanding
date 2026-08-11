@@ -1,0 +1,249 @@
+---
+name: visual-understanding
+description: |
+  Multi-provider visual understanding tool for images, videos, and documents.
+  Supports captioning, OCR, visual Q&A, document analysis, and object grounding
+  (bounding-box localisation) through configurable providers (Zhipu GLM-V,
+  OpenAI GPT-4o, Anthropic Claude, or any OpenAI-compatible endpoint).
+  Use when the user wants to describe, analyze, extract text from, or locate
+  objects in visual content. Invoke via CLI: `visual-understanding <subcommand>`.
+metadata:
+  emoji: "👁️"
+---
+
+# Visual Understanding Skill
+
+Multi-provider visual understanding — caption, OCR, Q&A, and object grounding
+through Zhipu GLM-V, OpenAI GPT-4o, Anthropic Claude, or any OpenAI-compatible
+vision endpoint. All capabilities are accessible via a single CLI.
+
+## When to Use
+
+- Describe, caption, or summarize image/video/document content
+- Extract text from images (OCR) or scanned documents
+- Answer questions about visual content
+- Compare multiple images
+- Locate objects in an image with bounding boxes
+- User mentions "看图说话", "图片描述", "OCR", "目标检测", "定位", "describe", "caption", "ground"
+
+## Prerequisites
+
+### Install
+
+```bash
+pip install -e .
+# or: pip install visual-understanding
+```
+
+### API Key Setup (Required)
+
+At least one provider's API key must be set as an environment variable.
+
+**Zhipu (recommended — supports native grounding + video + files):**
+
+```bash
+export ZHIPU_API_KEY="your_key"
+# Get key: https://bigmodel.cn/usercenter/proj-mgmt/apikeys
+```
+
+**OpenAI:**
+
+```bash
+export OPENAI_API_KEY="your_key"
+# Get key: https://platform.openai.com/api-keys
+```
+
+**Anthropic:**
+
+```bash
+export ANTHROPIC_API_KEY="your_key"
+# Get key: https://console.anthropic.com/settings/keys
+```
+
+### Provider Configuration (Optional)
+
+To add custom providers or change defaults, create a config file:
+
+```bash
+# Option 1: env var
+export VISUAL_UNDERSTANDING_CONFIG=/path/to/config.yaml
+
+# Option 2: default location
+mkdir -p ~/.config/visual-understanding
+cp config.example.yaml ~/.config/visual-understanding/config.yaml
+```
+
+See `config.example.yaml` for the full format. Without a config file, built-in
+defaults (Zhipu + OpenAI + Anthropic) are used.
+
+## How to Use
+
+### Check Available Providers
+
+```bash
+visual-understanding list-providers
+```
+
+### Analyze an Image (Caption / OCR / Q&A)
+
+```bash
+# Describe an image
+visual-understanding analyze --images "https://example.com/photo.jpg"
+
+# Analyze a local file
+visual-understanding analyze --images /path/to/photo.png
+
+# Custom prompt (OCR, Q&A, etc.)
+visual-understanding analyze --images document.jpg --prompt "Extract all text from this image"
+visual-understanding analyze --images photo.jpg --prompt "What color is the car?"
+
+# Multiple images (comparison)
+visual-understanding analyze --images img1.jpg img2.png --prompt "Compare these two images"
+
+# Use a specific provider/model
+visual-understanding analyze --images photo.jpg --provider openai --model gpt-4o
+```
+
+### Analyze a Video
+
+```bash
+visual-understanding analyze --videos "https://example.com/clip.mp4" --prompt "Summarize this video"
+```
+
+> ⚠️ Videos and files only support URLs (not local paths). Provider must support
+> video/file input (Zhipu GLM-V does; OpenAI/Anthropic do not).
+
+### Analyze a Document
+
+```bash
+visual-understanding analyze --files "https://example.com/report.pdf" --prompt "Summarize this document"
+```
+
+### Locate Objects (Grounding)
+
+```bash
+# Get bounding box coordinates (normalized 0-1000)
+visual-understanding ground --image photo.jpg --prompt "all people wearing red hats"
+
+# With detection JSON format (includes labels)
+visual-understanding ground --image photo.jpg --prompt "cars and pedestrians" --format detection_json
+
+# Visualize boxes on the image
+visual-understanding ground --image photo.jpg --prompt "all faces" --visualize --save-path result.png
+
+# Use a specific provider
+visual-understanding ground --image photo.jpg --prompt "animals" --provider zhipu --model glm-5v-turbo
+```
+
+### Save Results
+
+```bash
+visual-understanding analyze --images photo.jpg --output result.json
+```
+
+## CLI Reference
+
+### `analyze`
+
+```
+visual-understanding analyze (--images IMG [IMG...] | --videos VID [VID...] | --files FILE [FILE...]) [OPTIONS]
+```
+
+| Parameter         | Required | Description                                              |
+| ----------------- | -------- | ------------------------------------------------------- |
+| `--images`, `-i`  | One of   | Image URLs, local paths, or `base64:` strings           |
+| `--videos`, `-v`  | One of   | Video URLs (mp4/mkv/mov) — provider must support video  |
+| `--files`, `-f`   | One of   | Document URLs (pdf/docx/txt/xlsx/pptx)                  |
+| `--prompt`, `-p`  | No       | Instruction for the model (default: "Describe this image") |
+| `--provider`      | No       | Provider name (default: config default)                 |
+| `--model`, `-m`   | No       | Model name (default: provider default)                  |
+| `--temperature`   | No       | Sampling temperature (default: 0.8)                     |
+| `--max-tokens`    | No       | Max output tokens (default: 2048)                       |
+| `--output`, `-o`  | No       | Save JSON result to file                                |
+
+### `ground`
+
+```
+visual-understanding ground --image IMG --prompt TEXT [OPTIONS]
+```
+
+| Parameter          | Required | Description                                              |
+| ------------------ | -------- | ------------------------------------------------------- |
+| `--image`, `-i`    | Yes      | Image URL, local path, or `base64:` string              |
+| `--prompt`, `-p`   | Yes      | What to locate (e.g. "all people wearing hats")         |
+| `--provider`       | No       | Provider name                                            |
+| `--model`, `-m`    | No       | Model name                                               |
+| `--format`         | No       | `bbox_2d` (default) or `detection_json`                 |
+| `--visualize`      | No       | Draw bounding boxes on the image                         |
+| `--box-color`      | No       | Box color (default: red)                                 |
+| `--box-thickness`  | No       | Box line thickness (default: 3)                          |
+| `--save-path`      | No       | Save visualised image to this path                       |
+| `--output`, `-o`   | No       | Save JSON result to file                                 |
+
+## Response Format
+
+### analyze
+
+```json
+{
+  "success": true,
+  "text": "A landscape photo showing a mountain range at sunset...",
+  "usage": {"prompt_tokens": 128, "completion_tokens": 256, "total_tokens": 384},
+  "provider": "zhipu",
+  "model": "glm-5v-turbo"
+}
+```
+
+### ground
+
+```json
+{
+  "success": true,
+  "coordinates": [[100, 200, 300, 400], [500, 600, 700, 800]],
+  "labels": ["person-1", "person-2"],
+  "raw_text": "[{\"label\": \"person-1\", \"bbox_2d\": [100, 200, 300, 400]}, ...]",
+  "provider": "zhipu",
+  "model": "glm-5v-turbo",
+  "native_grounding": true,
+  "visualization_saved_path": "/tmp/visual_understanding_ground.png"
+}
+```
+
+Coordinates are normalised to 0-1000: `x = round(x_pixel / W * 1000)`.
+To convert to pixels: `x_pixel = round(x / 1000 * image_width)`.
+
+## Output Display Rules (Mandatory)
+
+After running any command, **show the full JSON output to the user**. Do not
+summarize, truncate, or only say "done".
+
+- For `analyze`: show the full `text` field — this is the model's response.
+- For `ground`: show `coordinates` and `labels` if present.
+- If `visualization_saved_path` is present, tell the user where the visualised
+  image was saved.
+- If `error` is present, show the error message and guide the user.
+
+## Error Handling
+
+- **API key not configured**: Show the error, guide user to set the environment variable.
+- **Authentication failed (401/403)**: API key invalid/expired → reconfigure.
+- **Rate limit (429)**: Quota exhausted → inform user to wait.
+- **Provider does not support video/files**: Use Zhipu GLM-V or switch to images.
+- **No coordinates found in grounding**: Model may not support grounding natively.
+  Use a provider with `native_grounding: true` (e.g. Zhipu GLM-V).
+
+## Adding Custom Providers
+
+Any OpenAI-compatible endpoint works. Add to your config:
+
+```yaml
+providers:
+  my-vlm:
+    type: openai_compat
+    api_key_env: MY_API_KEY
+    base_url: http://localhost:8080/v1
+    chat_models: [my-vlm-model]
+    default_chat_model: my-vlm-model
+```
+
+Then use `--provider my-vlm`.

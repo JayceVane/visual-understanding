@@ -1,0 +1,69 @@
+# visual-understanding provider configuration
+#
+# Copy this file to one of:
+#   1. Path specified by VISUAL_UNDERSTANDING_CONFIG env var
+#   2. ~/.config/visual-understanding/config.yaml
+#
+# API keys are referenced by ENVIRONMENT VARIABLE NAME (api_key_env).
+# Never put literal API keys in this file.
+
+default_provider: zhipu
+
+providers:
+  # --- Zhipu GLM-V ---
+  # Native grounding support (normalized 0-1000 coordinates)
+  # Get key: https://bigmodel.cn/usercenter/proj-mgmt/apikeys
+  zhipu:
+    type: openai_compat
+    api_key_env: ZHIPU_API_KEY
+    base_url: https://open.bigmodel.cn/api/paas/v4
+    chat_models:
+      - glm-5v
+      - glm-5v-turbo
+      - glm-4.6v
+      - glm-4.6v-flash
+      - glm-4.6v-flashx
+    default_chat_model: glm-5v-turbo
+    supports_video: true
+    supports_files: true
+    native_grounding: true
+    max_images: 50
+
+  # --- OpenAI ---
+  # Get key: https://platform.openai.com/api-keys
+  openai:
+    type: openai_compat
+    api_key_env: OPENAI_API_KEY
+    base_url: https://api.openai.com/v1
+    chat_models:
+      - gpt-4o
+      - gpt-4o-mini
+      - gpt-4.1
+      - gpt-4.1-mini
+    default_chat_model: gpt-4o
+    max_images: 10
+
+  # --- Anthropic Claude ---
+  # Get key: https://console.anthropic.com/settings/keys
+  anthropic:
+    type: anthropic
+    api_key_env: ANTHROPIC_API_KEY
+    base_url: https://api.anthropic.com/v1
+    chat_models:
+      - claude-sonnet-4-20250514
+      - claude-opus-4-20250514
+      - claude-3-5-sonnet-20241022
+    default_chat_model: claude-sonnet-4-20250514
+    max_images: 20
+
+  # --- Custom OpenAI-compatible provider (example) ---
+  # Uncomment and edit to add your own endpoint (vLLM, Ollama, Azure, Together, etc.)
+  #
+  # my-local-vlm:
+  #   type: openai_compat
+  #   api_key_env: LOCAL_API_KEY        # can be any dummy string if your server doesn't need auth
+  #   base_url: http://localhost:8080/v1
+  #   chat_models:
+  #     - qwen-vl-max
+  #   default_chat_model: qwen-vl-max
+  #   max_images: 10

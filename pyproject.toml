@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "visual-understanding"
+version = "0.1.0"
+description = "Multi-provider visual understanding MCP server & CLI — caption, OCR, Q&A, grounding"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "JayceVane" }]
+keywords = ["mcp", "vision", "vlm", "multimodal", "ocr", "grounding"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "mcp[cli]>=1.27,<2",
+    "httpx>=0.27",
+    "pyyaml>=6.0",
+    "pillow>=10.0",
+]
+
+[project.scripts]
+visual-understanding = "visual_understanding.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/visual_understanding"]
