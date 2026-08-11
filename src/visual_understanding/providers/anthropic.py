@@ -22,6 +22,49 @@ from .base import ChatResult, ContentBlock, VisionProvider
 _API_VERSION = "2023-06-01"
 
 
+async def url_to_anthropic_image_block(url: str) -> dict[str, Any]:
+    """Convert an image URL (http or data:) to an Anthropic image source block.
+
+    Shared by :class:`AnthropicProvider` and mixed-protocol gateways
+    (``model_protocols`` routing in :class:`~.openai_compat.OpenAICompatProvider`).
+    """
+    # data: URL — parse directly, no network fetch
+    if url.startswith("data:"):
+        # Format: data:<media_type>;base64,<data>
+        header, _, b64data = url.partition(",")
+        media_type = "image/jpeg"
+        if ";" in header:
+            media_type = header.split(":")[1].split(";")[0]
+        return {
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": media_type,
+                "data": b64data,
+            },
+        }
+
+    # http(s) URL — fetch and re-encode
+    async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
+        resp = await client.get(url)
+        resp.raise_for_status()
+
+    media_type = "image/jpeg"
+    ctype = resp.headers.get("content-type", "")
+    if ctype.startswith("image/"):
+        media_type = ctype.split(";")[0]
+
+    b64data = base64.b64encode(resp.content).decode()
+    return {
+        "type": "image",
+        "source": {
+            "type": "base64",
+            "media_type": media_type,
+            "data": b64data,
+        },
+    }
+
+
 class AnthropicProvider(VisionProvider):
     """Provider for Anthropic's Claude Messages API."""
 
@@ -31,41 +74,7 @@ class AnthropicProvider(VisionProvider):
 
     async def _url_to_image_block(self, url: str) -> dict[str, Any]:
         """Convert an image URL (http or data:) to an Anthropic image source block."""
-        # data: URL — parse directly, no network fetch
-        if url.startswith("data:"):
-            # Format: data:<media_type>;base64,<data>
-            header, _, b64data = url.partition(",")
-            media_type = "image/jpeg"
-            if ";" in header:
-                media_type = header.split(":")[1].split(";")[0]
-            return {
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": media_type,
-                    "data": b64data,
-                },
-            }
-
-        # http(s) URL — fetch and re-encode
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
-
-        media_type = "image/jpeg"
-        ctype = resp.headers.get("content-type", "")
-        if ctype.startswith("image/"):
-            media_type = ctype.split(";")[0]
-
-        b64data = base64.b64encode(resp.content).decode()
-        return {
-            "type": "image",
-            "source": {
-                "type": "base64",
-                "media_type": media_type,
-                "data": b64data,
-            },
-        }
+        return await url_to_anthropic_image_block(url)
 
     async def _translate_content(
         self, content: list[ContentBlock]

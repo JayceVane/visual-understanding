@@ -59,20 +59,35 @@ providers:
   # --- OpenCode Go (subscription, https://opencode.ai/go) ---
   # Key: your opencode subscription key (auth.json "opencode-go" entry)
   # Env var: OPENCODE_API_KEY
+  # NOTE: models use different wire protocols — routed per-model via
+  # `model_protocols` (openai → /chat/completions, anthropic → /messages).
   opencode-go:
     type: openai_compat
     api_key_env: OPENCODE_API_KEY
     base_url: https://opencode.ai/zen/go/v1
     chat_models:
-      - gpt-5.6-luna
-      - mimo-v2-omni
-      - mimo-v2-pro
-      - qwen3.7-plus
-      - grok-4.5
       - kimi-k2.7-code
-      - glm-5.2
-      - deepseek-v4-pro
-    default_chat_model: gpt-5.6-luna
+      - hy3
+      - mimo-v2.5
+      - mimo-v2.5-pro
+      - qwen3.7-plus
+      - minimax-m3
+      - minimax-m2.7
+    default_chat_model: kimi-k2.7-code
+    model_protocols:
+      kimi-k2.7-code: openai
+      hy3: openai
+      mimo-v2.5: openai
+      mimo-v2.5-pro: openai
+      qwen3.7-plus: anthropic
+      minimax-m3: anthropic
+      minimax-m2.7: anthropic
+    # Gateway rejects remote image URLs — always re-encode as base64
+    images_require_base64: true
+    # Hard per-model parameter constraints (always applied)
+    model_defaults:
+      kimi-k2.7-code:
+        temperature: 1        # this model only accepts temperature=1
     max_images: 10
     # Note: coding-focused subscription — no video/file input, no native grounding
 

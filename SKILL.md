@@ -91,6 +91,15 @@ export ANTHROPIC_API_KEY="your_key"
 # Get key: https://console.anthropic.com/settings/keys
 ```
 
+**OpenCode Go** (subscription, https://opencode.ai/go):
+
+```bash
+export OPENCODE_API_KEY="your_key"
+# Get key: 登录 https://opencode.ai/auth → Create API Key
+# 注意：opencode 客户端 auth.json 里的 key 不一定能用于 API 直连，
+# 必须从 opencode.ai/auth 网站创建/获取
+```
+
 ### Provider Configuration (Optional)
 
 配置文件位置（按优先级自动查找，找到即用）：

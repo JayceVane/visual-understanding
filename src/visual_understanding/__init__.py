@@ -4,4 +4,4 @@ Supports any OpenAI-compatible endpoint (OpenAI, Zhipu GLM-V, local VLMs) and
 Anthropic Claude for multimodal understanding and object grounding.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"

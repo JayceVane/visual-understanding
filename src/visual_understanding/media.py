@@ -15,6 +15,8 @@ import os
 from pathlib import Path
 from urllib.parse import urlparse
 
+import httpx
+
 # Supported image extensions (per common VLM API constraints)
 SUPPORTED_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 IMAGE_MIME_TYPES = {
@@ -144,3 +146,20 @@ def resolve_file(file_input: str, provider_supports_files: bool = True) -> str:
     if not is_public_url(s):
         raise ValueError(f"File URL must be a public http(s) address (blocked: {s})")
     return s
+
+
+async def fetch_image_as_data_url(url: str) -> str:
+    """Fetch a remote image and re-encode it as a ``data:`` base64 URL.
+
+    Used by providers that reject remote image URLs and only accept base64
+    (e.g. OpenCode Go gateway). Raises httpx.HTTPError on failure.
+    """
+    async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
+        resp = await client.get(url)
+        resp.raise_for_status()
+
+    media_type = resp.headers.get("content-type", "").split(";")[0].strip()
+    if not media_type.startswith("image/"):
+        media_type = "image/jpeg"
+    b64 = base64.b64encode(resp.content).decode()
+    return f"data:{media_type};base64,{b64}"

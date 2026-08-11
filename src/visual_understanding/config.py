@@ -35,6 +35,31 @@ class ProviderConfig(BaseModel):
     )
     max_images: int = 10
     extra_headers: dict[str, str] = Field(default_factory=dict)
+    model_protocols: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "Per-model wire protocol override: {model_name: 'openai' | 'anthropic'}. "
+            "Lets a single provider gateway route individual models to either the "
+            "OpenAI-compatible /chat/completions or the Anthropic /messages format "
+            "(e.g. OpenCode Go serves some models via each)."
+        ),
+    )
+    images_require_base64: bool = Field(
+        False,
+        description=(
+            "When True, remote image URLs are fetched and re-encoded as base64 "
+            "data URLs before sending. Some gateways (e.g. OpenCode Go) reject "
+            "remote image URLs and only accept base64."
+        ),
+    )
+    model_defaults: dict[str, dict[str, Any]] = Field(
+        default_factory=dict,
+        description=(
+            "Per-model parameter overrides that always apply, e.g. "
+            "{model: {temperature: 1, max_tokens: 8192}}. Used for hard model "
+            "constraints like OpenCode Go models that only accept temperature=1."
+        ),
+    )
 
     @property
     def api_key(self) -> str | None:
