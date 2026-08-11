@@ -56,6 +56,26 @@ providers:
     default_chat_model: claude-sonnet-4-20250514
     max_images: 20
 
+  # --- OpenCode Go (subscription, https://opencode.ai/go) ---
+  # Key: your opencode subscription key (auth.json "opencode-go" entry)
+  # Env var: OPENCODE_API_KEY
+  opencode-go:
+    type: openai_compat
+    api_key_env: OPENCODE_API_KEY
+    base_url: https://opencode.ai/zen/go/v1
+    chat_models:
+      - gpt-5.6-luna
+      - mimo-v2-omni
+      - mimo-v2-pro
+      - qwen3.7-plus
+      - grok-4.5
+      - kimi-k2.7-code
+      - glm-5.2
+      - deepseek-v4-pro
+    default_chat_model: gpt-5.6-luna
+    max_images: 10
+    # Note: coding-focused subscription — no video/file input, no native grounding
+
   # --- Custom OpenAI-compatible provider (example) ---
   # Uncomment and edit to add your own endpoint (vLLM, Ollama, Azure, Together, etc.)
   #
