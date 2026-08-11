@@ -7,8 +7,20 @@ description: |
   OpenAI GPT-4o, Anthropic Claude, or any OpenAI-compatible endpoint).
   Use when the user wants to describe, analyze, extract text from, or locate
   objects in visual content. Invoke via CLI: `visual-understanding <subcommand>`.
+when_to_use: >
+  当用户提供图片/视频/文档并要求描述、解读、提取文字、视觉问答、对比分析、
+  目标定位时触发。触发词：看图说话、图片描述、描述这张图、OCR、文字提取、
+  视频摘要、文档解读、目标检测、定位、bounding box、caption、describe image、
+  extract text、ground、locate、分析图片、识别图片内容。
+skillType: "cli"
 metadata:
   emoji: "👁️"
+  openclaw:
+    requires:
+      env: [ZHIPU_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY]
+      bins: []
+    primaryEnv: ZHIPU_API_KEY
+    homepage: https://github.com/JayceVane/visual-understanding
 ---
 
 # Visual Understanding Skill
@@ -28,12 +40,31 @@ vision endpoint. All capabilities are accessible via a single CLI.
 
 ## Prerequisites
 
-### Install
+### 环境检查（第一步）
+
+调用前先确认 CLI 可用，按以下顺序探测：
 
 ```bash
-pip install -e .
-# or: pip install visual-understanding
+# 方式一：入口点命令（pip 安装后）
+visual-understanding --help
+
+# 方式二：模块调用（Python 环境已安装该包）
+python -m visual_understanding --help
+
+# 方式三：uvx 零安装（若前两种不可用）
+uvx visual-understanding --help
+# 镜像未同步时加官方索引：
+uvx --default-index https://pypi.org/simple visual-understanding --help
 ```
+
+若三种方式都不可用，先安装：
+
+```bash
+pip install visual-understanding
+# 或从源码：pip install -e /path/to/visual-understanding
+```
+
+> ⚠️ 若 `visual-understanding` 命令不在 PATH（Windows 常见），用 `python -m visual_understanding` 代替。
 
 ### API Key Setup (Required)
 
