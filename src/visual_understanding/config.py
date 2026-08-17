@@ -17,11 +17,25 @@ from pydantic import BaseModel, Field
 
 
 class ProviderConfig(BaseModel):
-    """Configuration for a single vision provider."""
+    """Configuration for a single vision provider.
+
+    API keys can be supplied either inline via ``api_key`` or by referencing an
+    environment variable via ``api_key_env`` (inline takes precedence). Inline
+    keys are convenient for MCP setups (one config file configures everything)
+    but keep the file out of version control.
+    """
 
     type: Literal["openai_compat", "anthropic"] = "openai_compat"
-    api_key_env: str = Field(
-        ..., description="Name of the environment variable holding the API key."
+    api_key_env: str | None = Field(
+        default=None,
+        description="Name of the environment variable holding the API key.",
+    )
+    api_key: str | None = Field(
+        default=None,
+        description=(
+            "API key configured directly in the config file (takes precedence "
+            "over api_key_env). WARNING: keep this file out of version control."
+        ),
     )
     base_url: str = Field(..., description="API base URL (no trailing slash expected).")
     chat_models: list[str] = Field(
@@ -62,14 +76,27 @@ class ProviderConfig(BaseModel):
     )
 
     @property
-    def api_key(self) -> str | None:
-        """Resolve the API key from the environment variable."""
-        return os.environ.get(self.api_key_env)
+    def api_key_value(self) -> str | None:
+        """Resolve the API key: inline ``api_key`` first, then ``api_key_env``."""
+        if self.api_key:
+            return self.api_key
+        if self.api_key_env:
+            return os.environ.get(self.api_key_env)
+        return None
+
+    @property
+    def key_source(self) -> str:
+        """Where the key comes from — 'config file', 'env var', or 'missing'."""
+        if self.api_key:
+            return "config file"
+        if self.api_key_env and os.environ.get(self.api_key_env):
+            return f"env var {self.api_key_env}"
+        return "missing"
 
     @property
     def is_configured(self) -> bool:
-        """Whether the API key is present in the environment."""
-        return bool(self.api_key)
+        """Whether an API key is present."""
+        return bool(self.api_key_value)
 
     @property
     def capabilities(self) -> set[str]:
@@ -144,6 +171,45 @@ DEFAULT_CONFIG: dict[str, Any] = {
             ],
             "default_chat_model": "claude-sonnet-4-20250514",
             "max_images": 20,
+        },
+        # --- Third-party OpenAI-compatible vision providers (presets) ---
+        "dashscope": {
+            "type": "openai_compat",
+            "api_key_env": "DASHSCOPE_API_KEY",
+            "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            "chat_models": [
+                "qwen-vl-max",
+                "qwen-vl-plus",
+                "qwen2.5-vl-72b-instruct",
+                "qwen2.5-vl-32b-instruct",
+                "qwen2.5-vl-7b-instruct",
+            ],
+            "default_chat_model": "qwen-vl-max",
+            "max_images": 10,
+        },
+        "siliconflow": {
+            "type": "openai_compat",
+            "api_key_env": "SILICONFLOW_API_KEY",
+            "base_url": "https://api.siliconflow.cn/v1",
+            "chat_models": [
+                "Qwen/Qwen2.5-VL-72B-Instruct",
+                "Qwen/Qwen2.5-VL-32B-Instruct",
+                "Qwen/Qwen2.5-VL-7B-Instruct",
+            ],
+            "default_chat_model": "Qwen/Qwen2.5-VL-72B-Instruct",
+            "max_images": 10,
+        },
+        "openrouter": {
+            "type": "openai_compat",
+            "api_key_env": "OPENROUTER_API_KEY",
+            "base_url": "https://openrouter.ai/api/v1",
+            "chat_models": [
+                "qwen/qwen2.5-vl-72b-instruct",
+                "openai/gpt-4o",
+                "google/gemini-2.0-flash-001",
+            ],
+            "default_chat_model": "qwen/qwen2.5-vl-72b-instruct",
+            "max_images": 10,
         },
     },
 }

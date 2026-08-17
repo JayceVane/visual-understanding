@@ -82,11 +82,17 @@ class VisionProvider(ABC):
 
     def ensure_configured(self) -> str:
         """Return the API key or raise a helpful error."""
-        key = self.config.api_key
+        key = self.config.api_key_value
         if not key:
+            if self.config.api_key_env:
+                raise RuntimeError(
+                    f"Provider '{self.name}' is not configured. "
+                    f"Set the environment variable '{self.config.api_key_env}' "
+                    f"or set 'api_key' directly for this provider in the config file."
+                )
             raise RuntimeError(
-                f"Provider '{self.name}' is not configured. "
-                f"Set the environment variable '{self.config.api_key_env}' with your API key."
+                f"Provider '{self.name}' is not configured: no 'api_key' and no "
+                f"'api_key_env' set in the config file."
             )
         return key
 

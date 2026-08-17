@@ -104,6 +104,54 @@ def _cmd_list_providers(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Subcommand: doctor
+# ---------------------------------------------------------------------------
+
+def _cmd_doctor(args: argparse.Namespace) -> int:
+    """Diagnose configuration — locate config file, check CLI, test endpoints."""
+    import os
+    from . import config as config_mod
+    from .config import load_config
+
+    print(f"▶ config file: {config_mod._find_config_path() or '(none — using built-in defaults)'}")
+    print(f"▶ config env var ({config_mod._ENV_VAR}): {os.environ.get(config_mod._ENV_VAR) or '(not set)'}")
+    print()
+
+    cfg = load_config()
+    print(f"▶ default provider: {cfg.default_provider}")
+    print()
+
+    from .media import is_public_url
+    import httpx
+
+    for name, p in cfg.providers.items():
+        ok = p.is_configured
+        print(f"[{'✅' if ok else '❌'}] {name}")
+        print(f"    type: {p.type} | models: {len(p.chat_models)} | default: {p.default_chat_model}")
+        print(f"    key source: {p.key_source}")
+        print(f"    base_url: {p.base_url}")
+        # Basic connectivity check (config-level only, no API call)
+        if p.base_url and is_public_url(p.base_url):
+            try:
+                resp = httpx.get(p.base_url, timeout=5, follow_redirects=True)
+                status = resp.status_code
+                note = " — reachable" if status in (200, 301, 302, 307, 308) else (
+                    " — reachable (root path responds, API path may differ)" if status in (400, 401, 403, 404, 405) else ""
+                )
+                print(f"    endpoint: HTTP {status}{note}")
+            except Exception as exc:
+                print(f"    endpoint: unreachable ({exc})")
+        print()
+
+    # Exit nonzero if any provider is unconfigured
+    missing = [n for n, p in cfg.providers.items() if not p.is_configured]
+    if missing:
+        print(f"⚠️ {len(missing)} provider(s) missing API key: {', '.join(missing)}")
+        return 1
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # Subcommand: serve
 # ---------------------------------------------------------------------------
 
@@ -157,6 +205,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_list = sub.add_parser("list-providers", help="List configured providers and capabilities")
     p_list.add_argument("--output", "-o", default=None, help="Save JSON result to file")
     p_list.set_defaults(func=_cmd_list_providers)
+
+    # --- doctor ---
+    p_doctor = sub.add_parser("doctor", help="Diagnose config, API keys, and endpoint connectivity")
+    p_doctor.set_defaults(func=_cmd_doctor)
 
     # --- serve ---
     p_serve = sub.add_parser("serve", help="Start the MCP stdio server")

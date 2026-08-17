@@ -53,13 +53,13 @@ async def do_analyze(
         return {"success": False, "error": str(exc)}
 
     if not prov.is_configured:
-        return {
-            "success": False,
-            "error": (
-                f"Provider '{name}' API key not set. "
-                f"Set the environment variable '{prov.config.api_key_env}'."
-            ),
-        }
+        hint = (
+            f"Set `api_key` for provider '{name}' in the config file, "
+            f"or set the environment variable '{prov.config.api_key_env}'."
+            if prov.config.api_key_env
+            else f"Provider '{name}' needs an 'api_key' in the config file."
+        )
+        return {"success": False, "error": f"Provider '{name}' API key not set. {hint}"}
 
     # Build normalised content blocks
     content: list[dict[str, Any]] = []
@@ -138,12 +138,15 @@ async def do_ground(
         return GroundOutput(result={"success": False, "error": str(exc)})
 
     if not prov.is_configured:
+        hint = (
+            f"Set `api_key` for provider '{name}' in the config file, "
+            f"or set the environment variable '{prov.config.api_key_env}'."
+            if prov.config.api_key_env
+            else f"Provider '{name}' needs an 'api_key' in the config file."
+        )
         return GroundOutput(result={
             "success": False,
-            "error": (
-                f"Provider '{name}' API key not set. "
-                f"Set the environment variable '{prov.config.api_key_env}'."
-            ),
+            "error": f"Provider '{name}' API key not set. {hint}",
         })
 
     native_grounding = prov.config.native_grounding
@@ -217,6 +220,7 @@ def do_list_providers(config: AppConfig) -> dict[str, Any]:
             "default_model": prov_cfg.default_chat_model,
             "capabilities": sorted(prov_cfg.capabilities),
             "configured": prov_cfg.is_configured,
+            "key_source": prov_cfg.key_source,
             "api_key_env": prov_cfg.api_key_env,
         }
 

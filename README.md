@@ -86,6 +86,51 @@ visual-understanding list-providers
 > { "command": "uvx", "args": ["--default-index", "https://pypi.org/simple", "visual-understanding", "serve"] }
 > ```
 
+### 🔑 在 MCP 配置里直接注入环境变量
+
+MCP 客户端支持给子进程注入 `env`——API key 可以不设系统变量，直接写在客户端配置里：
+
+```json
+{
+  "mcpServers": {
+    "visual-understanding": {
+      "command": "uvx",
+      "args": ["visual-understanding", "serve"],
+      "env": {
+        "ZHIPU_API_KEY": "你的智谱key",
+        "OPENCODE_API_KEY": "你的opencode key"
+      }
+    }
+  }
+}
+```
+
+**Claude Desktop** 同样支持 `env` 字段（`claude_desktop_config.json`）。
+
+### 📁 配置文件直接写 API Key（可选）
+
+除了环境变量，`config.yaml` 里也支持 `api_key` 字段直接配置（**优先级高于** `api_key_env`）：
+
+```yaml
+providers:
+  dashscope:
+    type: openai_compat
+    api_key: "sk-直接写在配置里"      # 不设系统变量也能用
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    chat_models: [qwen-vl-max]
+    default_chat_model: qwen-vl-max
+```
+
+> ⚠️ 使用 `api_key` 直配时，务必把配置文件加入 `.gitignore` / 不要提交到版本库。
+
+### 🔍 配置诊断
+
+不确定配置是否正确？运行 doctor 检查：配置文件位置、每个提供商的 key 来源、端点连通性：
+
+```bash
+visual-understanding doctor
+```
+
 **Claude Desktop** (`claude_desktop_config.json`):
 
 ```json
@@ -126,13 +171,18 @@ visual-understanding analyze --images photo.jpg --provider openai --model gpt-4o
 
 ### 内置默认
 
-不创建配置文件时，内置三个提供商：
+不创建配置文件时，内置六个提供商：
 
 | 提供商 | 类型 | 模型 | 视频 | 文件 | 原生定位 |
 |--------|------|------|------|------|---------|
 | `zhipu` | OpenAI 兼容 | GLM-V 系列 | ✅ | ✅ | ✅ |
 | `openai` | OpenAI 兼容 | GPT-4o 系列 | ❌ | ❌ | ❌ |
 | `anthropic` | Anthropic | Claude 系列 | ❌ | ❌ | ❌ |
+| `dashscope` | OpenAI 兼容 | 通义千问 VL 系列（阿里百炼） | ❌ | ❌ | ❌ |
+| `siliconflow` | OpenAI 兼容 | 开源 VLM（硅基流动，国内直连） | ❌ | ❌ | ❌ |
+| `openrouter` | OpenAI 兼容 | 聚合多模型 | ❌ | ❌ | ❌ |
+
+内置预设只是"开箱即用"——真正强大的是自定义能力：**任何 OpenAI 兼容的视觉模型服务都能添加**（vLLM、Ollama、Azure、Together、本地模型等）。
 
 ### 自定义配置
 

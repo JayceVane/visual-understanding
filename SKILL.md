@@ -100,6 +100,35 @@ export OPENCODE_API_KEY="your_key"
 # 必须从 opencode.ai/auth 网站创建/获取
 ```
 
+**或者：配置文件直接写 key（MCP 场景推荐）**
+
+`~/.config/visual-understanding/config.yaml` 里直接配置，无需系统环境变量：
+
+```yaml
+providers:
+  zhipu:
+    type: openai_compat
+    api_key: "sk-直接写在配置里"    # 优先级高于 api_key_env
+    base_url: https://open.bigmodel.cn/api/paas/v4
+    chat_models: [glm-5v-turbo]
+    default_chat_model: glm-5v-turbo
+```
+
+MCP 客户端配置里也能注入 env：
+
+```json
+{ "command": "uvx", "args": ["visual-understanding", "serve"],
+  "env": { "ZHIPU_API_KEY": "你的key" } }
+```
+
+### 配置诊断
+
+配置有问题先跑 doctor（检查配置文件位置、key 来源、端点连通性）：
+
+```bash
+visual-understanding doctor
+```
+
 ### Provider Configuration (Optional)
 
 配置文件位置（按优先级自动查找，找到即用）：
