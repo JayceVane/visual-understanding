@@ -70,7 +70,9 @@ class AnthropicProvider(VisionProvider):
 
     def __init__(self, name: str, config: ProviderConfig) -> None:
         super().__init__(name, config)
-        self._endpoint = f"{config.base_url.rstrip('/')}/messages"
+
+    def _endpoint(self) -> str:
+        return f"{self.config.base_url_value.rstrip('/')}/messages"
 
     async def _url_to_image_block(self, url: str) -> dict[str, Any]:
         """Convert an image URL (http or data:) to an Anthropic image source block."""
@@ -112,12 +114,13 @@ class AnthropicProvider(VisionProvider):
         except ValueError as exc:
             return ChatResult(success=False, error=str(exc))
 
-        headers = {
-            "x-api-key": api_key,
+        headers: dict[str, str] = {
             "anthropic-version": _API_VERSION,
             "Content-Type": "application/json",
             **self.config.extra_headers,
         }
+        if api_key:
+            headers["x-api-key"] = api_key
 
         # Anthropic requires max_tokens and expects temperature at top level.
         payload: dict[str, Any] = {
@@ -130,7 +133,7 @@ class AnthropicProvider(VisionProvider):
         try:
             async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post(
-                    self._endpoint, headers=headers, json=payload
+                    self._endpoint(), headers=headers, json=payload
                 )
         except httpx.RequestError as exc:
             return ChatResult(success=False, error=f"Network error: {exc}")

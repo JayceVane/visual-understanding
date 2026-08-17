@@ -80,8 +80,13 @@ class VisionProvider(ABC):
         """Whether the API key is available."""
         return self.config.is_configured
 
-    def ensure_configured(self) -> str:
-        """Return the API key or raise a helpful error."""
+    def ensure_configured(self) -> str | None:
+        """Return the API key, or None for auth-less providers.
+
+        Raises a helpful error if the provider requires auth but has no key.
+        """
+        if not self.config.requires_auth:
+            return None
         key = self.config.api_key_value
         if not key:
             if self.config.api_key_env:
@@ -97,10 +102,11 @@ class VisionProvider(ABC):
         return key
 
     def resolve_model(self, model: str | None) -> str:
-        """Return *model* or the provider's default, validating against the known list."""
+        """Return *model* or the provider's default.
+
+        Falls back to ``"default"`` when the provider declares no models (e.g.
+        the env-injected ``custom`` provider) — many OpenAI-compatible endpoints
+        accept an arbitrary/\"default\" model name.
+        """
         m = model or self.config.default_chat_model
-        if not m:
-            raise ValueError(
-                f"No model specified and provider '{self.name}' has no default_chat_model."
-            )
-        return m
+        return m or "default"

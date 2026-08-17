@@ -121,6 +121,20 @@ MCP 客户端配置里也能注入 env：
   "env": { "ZHIPU_API_KEY": "你的key" } }
 ```
 
+**通用三方 OpenAI 端点**（URL + key 全从 env 注入，自动注册 `custom` 提供商）：
+
+```json
+{ "command": "uvx", "args": ["visual-understanding", "serve"],
+  "env": {
+    "VISUAL_UNDERSTANDING_BASE_URL": "https://三方服务.com/v1",
+    "VISUAL_UNDERSTANDING_API_KEY": "sk-xxx",
+    "VISUAL_UNDERSTANDING_MODEL": "qwen-vl-max"
+  } }
+```
+
+- `VISUAL_UNDERSTANDING_BASE_URL` 必填（触发注册）；API key 可选——不设则无认证直连（适合本地 vLLM/Ollama）
+- 调用时 `--provider custom`
+
 ### 配置诊断
 
 配置有问题先跑 doctor（检查配置文件位置、key 来源、端点连通性）：

@@ -23,6 +23,34 @@ from .media import resolve_file, resolve_image, resolve_video
 from .providers import get_provider
 
 
+def _config_hint(prov) -> str:
+    """Build a diagnostic hint for a misconfigured provider."""
+    cfg = prov.config
+    hints: list[str] = []
+
+    if not cfg.base_url_value:
+        if cfg.base_url_env:
+            hints.append(
+                f"set base_url in config, or env '{cfg.base_url_env}' "
+                f"or the generic 'VISUAL_UNDERSTANDING_BASE_URL'"
+            )
+        else:
+            hints.append("set `base_url` in the config file")
+
+    if cfg.requires_auth and not cfg.api_key_value:
+        if cfg.api_key_env:
+            hints.append(
+                f"set `api_key` in config or env '{cfg.api_key_env}' "
+                f"(or generic 'VISUAL_UNDERSTANDING_API_KEY')"
+            )
+        else:
+            hints.append("set `api_key` in the config file")
+
+    if not hints:
+        hints.append("check the provider definition in your config file")
+    return "; ".join(hints)
+
+
 # ---------------------------------------------------------------------------
 # vision_analyze
 # ---------------------------------------------------------------------------
@@ -53,13 +81,10 @@ async def do_analyze(
         return {"success": False, "error": str(exc)}
 
     if not prov.is_configured:
-        hint = (
-            f"Set `api_key` for provider '{name}' in the config file, "
-            f"or set the environment variable '{prov.config.api_key_env}'."
-            if prov.config.api_key_env
-            else f"Provider '{name}' needs an 'api_key' in the config file."
-        )
-        return {"success": False, "error": f"Provider '{name}' API key not set. {hint}"}
+        return {
+            "success": False,
+            "error": f"Provider '{name}' not configured. {_config_hint(prov)}",
+        }
 
     # Build normalised content blocks
     content: list[dict[str, Any]] = []
@@ -138,15 +163,9 @@ async def do_ground(
         return GroundOutput(result={"success": False, "error": str(exc)})
 
     if not prov.is_configured:
-        hint = (
-            f"Set `api_key` for provider '{name}' in the config file, "
-            f"or set the environment variable '{prov.config.api_key_env}'."
-            if prov.config.api_key_env
-            else f"Provider '{name}' needs an 'api_key' in the config file."
-        )
         return GroundOutput(result={
             "success": False,
-            "error": f"Provider '{name}' API key not set. {hint}",
+            "error": f"Provider '{name}' not configured. {_config_hint(prov)}",
         })
 
     native_grounding = prov.config.native_grounding
@@ -221,6 +240,8 @@ def do_list_providers(config: AppConfig) -> dict[str, Any]:
             "capabilities": sorted(prov_cfg.capabilities),
             "configured": prov_cfg.is_configured,
             "key_source": prov_cfg.key_source,
+            "base_url": prov_cfg.base_url_value,
+            "base_url_source": prov_cfg.base_url_source,
             "api_key_env": prov_cfg.api_key_env,
         }
 

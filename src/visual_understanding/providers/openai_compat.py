@@ -35,7 +35,9 @@ class OpenAICompatProvider(VisionProvider):
 
     def __init__(self, name: str, config: ProviderConfig) -> None:
         super().__init__(name, config)
-        self._endpoint = f"{config.base_url.rstrip('/')}/chat/completions"
+
+    def _chat_endpoint(self) -> str:
+        return f"{self.config.base_url_value.rstrip('/')}/chat/completions"
 
     async def _translate_content(
         self, content: list[ContentBlock]
@@ -79,7 +81,7 @@ class OpenAICompatProvider(VisionProvider):
         temperature: float = 0.8,
         max_tokens: int = 2048,
     ) -> ChatResult:
-        api_key = self.ensure_configured()
+        api_key = self.ensure_configured()  # None for auth-less providers
         resolved_model = self.resolve_model(model)
 
         # Apply per-model parameter overrides (hard model constraints)
@@ -95,11 +97,12 @@ class OpenAICompatProvider(VisionProvider):
                 api_key, resolved_model, content, temperature, max_tokens
             )
 
-        headers = {
-            "Authorization": f"Bearer {api_key}",
+        headers: dict[str, str] = {
             "Content-Type": "application/json",
             **self.config.extra_headers,
         }
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
 
         payload: dict[str, Any] = {
             "model": resolved_model,
@@ -116,7 +119,7 @@ class OpenAICompatProvider(VisionProvider):
         try:
             async with httpx.AsyncClient(timeout=120) as client:
                 resp = await client.post(
-                    self._endpoint, headers=headers, json=payload
+                    self._chat_endpoint(), headers=headers, json=payload
                 )
         except httpx.RequestError as exc:
             return ChatResult(success=False, error=f"Network error: {exc}")
@@ -191,13 +194,14 @@ class OpenAICompatProvider(VisionProvider):
         except httpx.RequestError as exc:
             return ChatResult(success=False, error=f"Failed to fetch image: {exc}")
 
-        endpoint = f"{self.config.base_url.rstrip('/')}/messages"
-        headers = {
-            "x-api-key": api_key,
+        endpoint = f"{self.config.base_url_value.rstrip('/')}/messages"
+        headers: dict[str, str] = {
             "anthropic-version": _ANTHROPIC_API_VERSION,
             "Content-Type": "application/json",
             **self.config.extra_headers,
         }
+        if api_key:
+            headers["x-api-key"] = api_key
         payload = {
             "model": model,
             "max_tokens": max_tokens,

@@ -37,7 +37,29 @@ class ProviderConfig(BaseModel):
             "over api_key_env). WARNING: keep this file out of version control."
         ),
     )
-    base_url: str = Field(..., description="API base URL (no trailing slash expected).")
+    base_url: str = Field(
+        default="",
+        description=(
+            "API base URL (no trailing slash). May be left empty if base_url_env "
+            "or the generic VISUAL_UNDERSTANDING_BASE_URL env var provides it."
+        ),
+    )
+    base_url_env: str | None = Field(
+        default=None,
+        description=(
+            "Name of the environment variable holding the base URL. Lets the MCP "
+            "client inject the endpoint via its `env` field. Inline base_url takes "
+            "precedence."
+        ),
+    )
+    requires_auth: bool = Field(
+        default=True,
+        description=(
+            "Whether an API key is required. Set False for auth-less OpenAI-"
+            "compatible endpoints (local vLLM/Ollama, internal proxies) so no "
+            "Authorization header is sent."
+        ),
+    )
     chat_models: list[str] = Field(
         default_factory=list, description="Available vision/chat models."
     )
@@ -86,7 +108,9 @@ class ProviderConfig(BaseModel):
 
     @property
     def key_source(self) -> str:
-        """Where the key comes from — 'config file', 'env var', or 'missing'."""
+        """Where the key comes from — 'config file', 'env var', 'not required', or 'missing'."""
+        if not self.requires_auth:
+            return "not required"
         if self.api_key:
             return "config file"
         if self.api_key_env and os.environ.get(self.api_key_env):
@@ -94,8 +118,32 @@ class ProviderConfig(BaseModel):
         return "missing"
 
     @property
+    def base_url_value(self) -> str:
+        """Resolve the base URL: inline ``base_url``, then ``base_url_env``, then generic env."""
+        if self.base_url:
+            return self.base_url
+        if self.base_url_env:
+            return os.environ.get(self.base_url_env, "")
+        return os.environ.get("VISUAL_UNDERSTANDING_BASE_URL", "")
+
+    @property
+    def base_url_source(self) -> str:
+        """Where the base URL comes from (for diagnostics)."""
+        if self.base_url:
+            return "config file"
+        if self.base_url_env and os.environ.get(self.base_url_env):
+            return f"env var {self.base_url_env}"
+        if os.environ.get("VISUAL_UNDERSTANDING_BASE_URL"):
+            return "env var VISUAL_UNDERSTANDING_BASE_URL"
+        return "missing"
+
+    @property
     def is_configured(self) -> bool:
-        """Whether an API key is present."""
+        """Whether the provider is usable: base URL present and key present (or not required)."""
+        if not self.base_url_value:
+            return False
+        if not self.requires_auth:
+            return True
         return bool(self.api_key_value)
 
     @property
@@ -219,6 +267,53 @@ DEFAULT_CONFIG: dict[str, Any] = {
 _ENV_VAR = "VISUAL_UNDERSTANDING_CONFIG"
 _USER_CONFIG_PATH = Path.home() / ".config" / "visual-understanding" / "config.yaml"
 
+# Generic env vars that auto-register a 'custom' OpenAI-compatible provider.
+# The MCP client can inject these via its `env` field to point at any
+# third-party OpenAI-compatible vision endpoint without touching config.yaml.
+_ENV_BASE_URL = "VISUAL_UNDERSTANDING_BASE_URL"
+_ENV_API_KEY = "VISUAL_UNDERSTANDING_API_KEY"
+_ENV_MODEL = "VISUAL_UNDERSTANDING_MODEL"
+
+
+def _apply_custom_provider(raw: dict[str, Any]) -> dict[str, Any]:
+    """Merge the generic ``VISUAL_UNDERSTANDING_*`` env vars into a 'custom' provider.
+
+    If ``VISUAL_UNDERSTANDING_BASE_URL`` is set, a provider named ``custom`` is
+    ensured (created or updated — explicit env values win over config.yaml).
+    ``VISUAL_UNDERSTANDING_API_KEY`` is optional: when absent the provider runs
+    auth-less (``requires_auth: False``).
+    """
+    base_url = os.environ.get(_ENV_BASE_URL)
+    if not base_url:
+        return raw
+
+    api_key = os.environ.get(_ENV_API_KEY)
+    model = os.environ.get(_ENV_MODEL)
+
+    providers = dict(raw.get("providers", {}))
+    custom = dict(providers.get("custom", {}))
+    custom["type"] = custom.get("type", "openai_compat")
+    # Reference the env var so diagnostics show the correct source
+    custom["base_url_env"] = _ENV_BASE_URL
+    custom.pop("base_url", None)
+    if api_key:
+        custom["api_key_env"] = _ENV_API_KEY
+        custom.pop("api_key", None)
+        custom["requires_auth"] = True
+    else:
+        custom.pop("api_key", None)
+        custom.pop("api_key_env", None)
+        custom["requires_auth"] = False
+    if model:
+        custom["default_chat_model"] = model
+        if model not in custom.get("chat_models", []):
+            custom["chat_models"] = [model] + list(custom.get("chat_models", []))
+    providers["custom"] = custom
+
+    result = dict(raw)
+    result["providers"] = providers
+    return result
+
 
 def _find_config_path() -> Path | None:
     """Three-level config file lookup.
@@ -242,15 +337,20 @@ def _find_config_path() -> Path | None:
 def load_config() -> AppConfig:
     """Load configuration from YAML file, falling back to built-in defaults.
 
-    The default config includes Zhipu, OpenAI, and Anthropic. A user config file
+    The default config includes Zhipu, OpenAI, Anthropic, and third-party OpenAI-
+    compatible presets (DashScope / SiliconFlow / OpenRouter). A user config file
     completely replaces the defaults (merge is intentionally not done to keep
     semantics simple — copy what you need from ``config.example.yaml``).
+
+    If the generic ``VISUAL_UNDERSTANDING_BASE_URL`` env var is set, a ``custom``
+    provider is merged in (see :func:`_apply_custom_provider`).
     """
     path = _find_config_path()
     if path is None:
-        return AppConfig(**DEFAULT_CONFIG)
+        raw = dict(DEFAULT_CONFIG)
+    else:
+        with open(path, "r", encoding="utf-8") as f:
+            raw = yaml.safe_load(f) or {}
 
-    with open(path, "r", encoding="utf-8") as f:
-        raw = yaml.safe_load(f) or {}
-
+    raw = _apply_custom_provider(raw)
     return AppConfig(**raw)

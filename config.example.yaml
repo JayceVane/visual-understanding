@@ -8,6 +8,14 @@
 #   - `api_key_env`: reference an environment variable name
 #   - `api_key`:     configure directly in this file (convenient for MCP setups;
 #                    keep this file out of version control)
+#
+# Base URL can also come from an environment variable:
+#   - `base_url_env`: env var name holding the endpoint
+#   - generic env VISUAL_UNDERSTANDING_BASE_URL + VISUAL_UNDERSTANDING_API_KEY
+#     auto-register a provider named `custom` (see README "MCP 配置")
+#
+# `requires_auth: false` for auth-less OpenAI-compatible endpoints
+# (local vLLM/Ollama, internal proxies) — no Authorization header is sent.
 
 default_provider: zhipu
 
@@ -104,6 +112,14 @@ providers:
   #     - qwen-vl-max
   #   default_chat_model: qwen-vl-max
   #   max_images: 10
+
+  # --- Auth-less OpenAI-compatible endpoint (local server, no key needed) ---
+  # no-api-vlm:
+  #   type: openai_compat
+  #   base_url: http://localhost:11434/v1      # e.g. Ollama
+  #   requires_auth: false                     # no Authorization header sent
+  #   chat_models: [llama3.2-vision]
+  #   default_chat_model: llama3.2-vision
 
   # --- Third-party OpenAI-compatible vision providers (presets, same as built-in defaults) ---
 

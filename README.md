@@ -108,6 +108,36 @@ MCP 客户端支持给子进程注入 `env`——API key 可以不设系统变�
 
 **Claude Desktop** 同样支持 `env` 字段（`claude_desktop_config.json`）。
 
+### 🌐 通用三方 OpenAI 兼容端点（URL + key 都可配）
+
+设置 `VISUAL_UNDERSTANDING_BASE_URL` 后自动注册一个名为 `custom` 的提供商
+——**URL 和 key 都可以从 MCP 的 `env` 注入**，无需改配置文件：
+
+```json
+{
+  "mcpServers": {
+    "visual-understanding": {
+      "command": "uvx",
+      "args": ["visual-understanding", "serve"],
+      "env": {
+        "VISUAL_UNDERSTANDING_BASE_URL": "https://你的三方服务.com/v1",
+        "VISUAL_UNDERSTANDING_API_KEY": "sk-xxx",
+        "VISUAL_UNDERSTANDING_MODEL": "qwen-vl-max"
+      }
+    }
+  }
+}
+```
+
+| env 变量 | 必填 | 说明 |
+|---------|------|------|
+| `VISUAL_UNDERSTANDING_BASE_URL` | ✅ | OpenAI 兼容端点地址（触发 `custom` 提供商注册） |
+| `VISUAL_UNDERSTANDING_API_KEY` | ❌ | 认证 key。**不设置则按无认证处理**（本地 vLLM/Ollama 等免 key 服务） |
+| `VISUAL_UNDERSTANDING_MODEL` | ❌ | 默认模型名，不设置时用 `"default"` 兜底 |
+
+使用：`--provider custom`（或在配置文件里把 `default_provider` 设为 `custom`）。
+MCP 工具调用时 provider 参数传 `"custom"` 即可。
+
 ### 📁 配置文件直接写 API Key（可选）
 
 除了环境变量，`config.yaml` 里也支持 `api_key` 字段直接配置（**优先级高于** `api_key_env`）：

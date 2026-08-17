@@ -127,11 +127,11 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
     for name, p in cfg.providers.items():
         ok = p.is_configured
         print(f"[{'✅' if ok else '❌'}] {name}")
-        print(f"    type: {p.type} | models: {len(p.chat_models)} | default: {p.default_chat_model}")
+        print(f"    type: {p.type} | models: {len(p.chat_models)} | default: {p.default_chat_model or '(auto)'}")
         print(f"    key source: {p.key_source}")
-        print(f"    base_url: {p.base_url}")
+        print(f"    base_url: {p.base_url_value or '(missing)'} [{p.base_url_source}]")
         # Basic connectivity check (config-level only, no API call)
-        if p.base_url and is_public_url(p.base_url):
+        if p.base_url_value and is_public_url(p.base_url_value):
             try:
                 resp = httpx.get(p.base_url, timeout=5, follow_redirects=True)
                 status = resp.status_code
@@ -146,7 +146,7 @@ def _cmd_doctor(args: argparse.Namespace) -> int:
     # Exit nonzero if any provider is unconfigured
     missing = [n for n, p in cfg.providers.items() if not p.is_configured]
     if missing:
-        print(f"⚠️ {len(missing)} provider(s) missing API key: {', '.join(missing)}")
+        print(f"⚠️ {len(missing)} provider(s) unconfigured: {', '.join(missing)}")
         return 1
     return 0
 
