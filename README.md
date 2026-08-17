@@ -9,9 +9,10 @@
 完成图片/视频/文档的多模态理解与目标定位。
 
 - 🚀 **零安装**：`uvx visual-understanding <command>` 直接运行（已发布 [PyPI](https://pypi.org/project/visual-understanding/)）
-- 🔌 **双模式**：MCP 服务器（`serve`）+ CLI（`analyze`/`ground`/`list-providers`）
-- 🌐 **多提供商**：Zhipu / OpenAI / Anthropic / 任意 OpenAI 兼容端点，YAML 配置即插即用
-- 👁️ **核心能力**：图片/视频/文档理解 + 目标定位（bounding box）
+- 🔌 **双模式**：MCP 服务器（`serve`）+ CLI（`analyze`/`ground`/`list-providers`/`doctor`）
+- 🌐 **多提供商**：Zhipu / OpenAI / Anthropic / DashScope / SiliconFlow / OpenRouter / 任意 OpenAI 兼容端点，YAML 配置即插即用
+- 🔑 **灵活配 key**：环境变量 / MCP 客户端 `env` 注入 / 配置文件 `api_key` 直配，三种方式任选
+- 👁️ **核心能力**：图片/视频/文档理解 + 目标定位（bounding box）+ `doctor` 配置诊断
 
 ## 功能
 
@@ -131,14 +132,18 @@ providers:
 visual-understanding doctor
 ```
 
-**Claude Desktop** (`claude_desktop_config.json`):
+**Claude Desktop** (`claude_desktop_config.json`) — 同样支持 `env` 字段：
 
 ```json
 {
   "mcpServers": {
     "visual-understanding": {
-      "command": "visual-understanding",
-      "args": ["serve"]
+      "command": "uvx",
+      "args": ["visual-understanding", "serve"],
+      "env": {
+        "ZHIPU_API_KEY": "你的智谱key",
+        "OPENCODE_API_KEY": "你的opencode key"
+      }
     }
   }
 }
@@ -256,11 +261,11 @@ visual-understanding analyze --images photo.jpg --provider my-vlm
 - **`grounding.py`** — 定位 prompt 构造、坐标解析、Pillow 画框
 - **`ops.py`** — 共享操作逻辑（MCP 工具与 CLI 子命令的唯一调用入口）
 - **`server.py`** — FastMCP 服务器（3 个 MCP 工具）
-- **`cli.py`** — CLI 入口（4 个子命令：analyze / ground / list-providers / serve）
+- **`cli.py`** — CLI 入口（5 个子命令：analyze / ground / list-providers / doctor / serve）
 
 ## 安全设计
 
-- **API 密钥**始终通过环境变量名引用（`api_key_env`），配置文件中不出现明文密钥
+- **API 密钥**两种方式：`api_key_env` 引用环境变量名（推荐）；或 `api_key` 直接配置（便捷但**务必把配置文件加入 `.gitignore`，不要提交版本库**）
 - **`base_url`** 仅在配置中指定，工具参数不接受覆盖（防止密钥泄露到恶意端点）
 - **URL 输入**仅允许 http/https 公网地址，拒绝 localhost/内网 IP（防 SSRF）
 - **`.gitignore`** 排除 `config.yaml`、`.env`
